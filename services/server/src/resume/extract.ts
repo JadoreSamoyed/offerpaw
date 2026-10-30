@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { MAX_DOCX_EXPANDED_BYTES, MAX_PDF_PAGES, MAX_RESUME_BYTES, MAX_RESUME_CHARACTERS, ResumeError, type ExtractedResume, type ResumeFormat } from './types.js';
 
@@ -78,6 +79,13 @@ async function readPdf(bytes: Buffer): Promise<string> {
   // The bundled CJS entry avoids re-transforming PDF.js's large ESM source in tsx development.
   const { PDFParse } = require('pdf-parse') as typeof import('pdf-parse');
   const pdfjsRoot = dirname(createRequire(require.resolve('pdf-parse')).resolve('pdfjs-dist/package.json'));
+  // PDF.js still dynamically imports its fake worker in Node. Loading its large
+  // unminified .mjs through tsx on a cold cache can exceed this child's RSS limit
+  // before document parsing begins. The upstream standalone minified worker has
+  // no local imports; a data URL lets Node load it without source transformation.
+  // Read only installed dependency code, never document-controlled code or URLs.
+  const workerSource = readFileSync(join(pdfjsRoot, 'legacy/build/pdf.worker.min.mjs'));
+  PDFParse.setWorker(`data:text/javascript;base64,${workerSource.toString('base64')}`);
   const parser = new PDFParse({ data: new Uint8Array(bytes), verbosity: 0, isEvalSupported: false,
     useWorkerFetch: false, useWasm: false, disableAutoFetch: true, disableStream: true,
     disableFontFace: true, maxImageSize: 0, enableXfa: false,

@@ -34,7 +34,14 @@ export function extractInWorker(bytes: Buffer, fileName: string, format: ResumeF
       else finish(new ResumeError(isResumeErrorCode(message.error) ? message.error : 'invalid_file'));
     });
     worker.once('error', () => finish(new ResumeError('document_too_complex')));
-    worker.once('exit', (code, signal) => { if (!finished) finish(new ResumeError(code || signal ? 'document_too_complex' : 'invalid_file')); });
+    worker.once('exit', (code, signal) => {
+      if (finished) return;
+      const error = new ResumeError(code || signal ? 'document_too_complex' : 'invalid_file');
+      // Keep diagnostic metadata for direct callers/tests without exposing parser
+      // stderr, filenames or document text. The HTTP route returns only code/message.
+      error.cause = { stage: 'resume_parser_exit', exitCode: code, signal };
+      finish(error);
+    });
     if (signal.aborted) cancel();
     else worker.send({ bytes, fileName, format }, error => { if (error) finish(new ResumeError('invalid_file')); });
   });

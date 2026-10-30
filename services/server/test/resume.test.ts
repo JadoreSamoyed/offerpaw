@@ -2,6 +2,9 @@ import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer, request } from 'node:http';
 import { once } from 'node:events';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, relative, isAbsolute } from 'node:path';
 import { deflateRawSync, deflateSync } from 'node:zlib';
 import { loadConfig } from '../src/config.js';
 import { MAX_RESUME_BYTES, MAX_RESUME_CHARACTERS } from '../src/resume/types.js';
@@ -93,12 +96,33 @@ test('extracts real PDF, DOCX, UTF-8 and BOM UTF-16 fixtures through the HTTP en
   for (const [name, bytes, format, expected] of cases) {
     const response = await upload(endpoint, name, bytes);
     const result = await response.json();
-    assert.equal(response.status, 200, JSON.stringify(result));
+    assert.equal(response.status, 200, `${name}: ${JSON.stringify(result)}`);
     assert.equal(result.fileName, name); assert.equal(result.format, format);
     assert.ok(result.text.includes(expected)); assert.equal(result.characters, result.text.length); assert.equal(result.truncated, false);
     assert.equal(response.headers.get('Cache-Control'), 'no-store');
     assert.equal(response.headers.get('X-Content-Type-Options'), 'nosniff');
   }
+});
+
+test('the first PDF in a fresh parser cache stays within the child memory limits', async t => {
+  const temporaryRoot = tmpdir();
+  const cache = mkdtempSync(join(temporaryRoot, 'offerpaw-cold-parser-'));
+  const previous = { TEMP: process.env.TEMP, TMP: process.env.TMP };
+  t.after(() => {
+    for (const key of ['TEMP', 'TMP'] as const) {
+      if (previous[key] === undefined) delete process.env[key];
+      else process.env[key] = previous[key];
+    }
+    const location = relative(temporaryRoot, cache);
+    assert.ok(location && !location.startsWith('..') && !isAbsolute(location));
+    rmSync(cache, { recursive: true, force: true });
+  });
+  // The child deliberately inherits only TEMP/TMP, not loader-specific environment
+  // variables. A new temp directory exercises tsx's first-load path on all OSes.
+  process.env.TEMP = cache;
+  process.env.TMP = cache;
+  const result = await extractInWorker(pdfFixture('Cold cache engineer'), 'cold.pdf', 'pdf', new AbortController().signal);
+  assert.ok(result.text.includes('Cold cache engineer'));
 });
 
 test('text truncation is explicit and preserves complete Unicode characters', async t => {
@@ -251,7 +275,9 @@ test('compressed PDF expansion is stopped by the child memory watchdog without b
   const health = await fetch(endpoint.replace('/resume/extract', '/health'));
   assert.equal(health.status, 200); await health.arrayBuffer();
   const response = await pending;
-  assert.equal(response.status, 422); assert.equal((await response.json()).error.code, 'document_too_complex');
+  const result = await response.json();
+  assert.equal(response.status, 422); assert.equal(result.error.code, 'document_too_complex');
+  assert.deepEqual(Object.keys(result.error).sort(), ['code', 'message']);
   const normal = await upload(endpoint, 'normal.pdf', pdfFixture());
   assert.equal(normal.status, 200); assert.ok((await normal.json()).text.includes('Ada Engineer'));
 });
