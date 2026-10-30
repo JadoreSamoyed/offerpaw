@@ -1,5 +1,5 @@
 import { createRequire } from 'node:module';
-import { readFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 import { MAX_DOCX_EXPANDED_BYTES, MAX_PDF_PAGES, MAX_RESUME_BYTES, MAX_RESUME_CHARACTERS, ResumeError, type ExtractedResume, type ResumeFormat, type ParserPhase } from './types.js';
 
@@ -80,14 +80,14 @@ async function readPdf(bytes: Buffer, phase: (value: ParserPhase) => void): Prom
   phase('pdf_dependency');
   const { PDFParse } = require('pdf-parse') as typeof import('pdf-parse');
   const pdfjsRoot = dirname(createRequire(require.resolve('pdf-parse')).resolve('pdfjs-dist/package.json'));
-  // Use the matching dependency's standalone minified worker via PDFParse's
-  // worker-source API. Read only installed code, never document-controlled code
-  // or URLs. Runtime loaders may still process data URLs; the watchdog measures
-  // their memory cost along with actual document parsing.
+  // Use the matching dependency's minified worker with a short file URL. A data
+  // URL embeds the entire module in tsx's source-map metadata and can exceed the
+  // child RSS limit while getInfo initializes PDF.js. The installed dependency
+  // path is fixed here; documents cannot choose worker code or URLs.
   phase('pdf_worker_source');
-  const workerSource = readFileSync(join(pdfjsRoot, 'legacy/build/pdf.worker.min.mjs'));
+  const workerSource = pathToFileURL(join(pdfjsRoot, 'legacy/build/pdf.worker.min.mjs')).href;
   phase('pdf_worker_config');
-  PDFParse.setWorker(`data:text/javascript;base64,${workerSource.toString('base64')}`);
+  PDFParse.setWorker(workerSource);
   phase('pdf_constructor');
   const parser = new PDFParse({ data: new Uint8Array(bytes), verbosity: 0, isEvalSupported: false,
     useWorkerFetch: false, useWasm: false, disableAutoFetch: true, disableStream: true,
