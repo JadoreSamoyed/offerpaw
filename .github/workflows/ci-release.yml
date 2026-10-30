@@ -41,7 +41,13 @@ jobs:
       - name: Check types
         run: npm run typecheck
       - name: Run tests
+        id: tests
         run: npm test
+      - name: Check compiled resume extraction
+        if: ${{ !cancelled() && (steps.tests.outcome == 'success' || steps.tests.outcome == 'failure') }}
+        run: |
+          npm run build -w services/server
+          RESUME_TEST_COMPILED=1 node --import tsx --test services/server/test/resume.test.ts
       - name: Check the scripted demo over localhost
         run: npm run demo:smoke
       - name: Build the server and web client

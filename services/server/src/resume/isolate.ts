@@ -1,7 +1,7 @@
 import { fork } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import { isResumeErrorCode, ResumeError, type ExtractedResume, type ResumeFormat } from './types.js';
+import { isResumeErrorCode, PARSER_PHASES, ResumeError, type ExtractedResume, type ResumeFormat } from './types.js';
 
 const require = createRequire(import.meta.url);
 export function extractInWorker(bytes: Buffer, fileName: string, format: ResumeFormat, signal: AbortSignal, timeoutMs = 20000): Promise<ExtractedResume> {
@@ -14,8 +14,24 @@ export function extractInWorker(bytes: Buffer, fileName: string, format: ResumeF
     const worker = fork(url, [], { serialization: 'advanced', windowsHide: true,
       execArgv: ['--max-old-space-size=128', '--max-semi-space-size=16', ...(source ? ['--import', pathToFileURL(require.resolve('tsx')).href] : [])],
       // Parser output may contain document fragments. Discard it, including native diagnostics.
-      stdio: ['ignore', 'ignore', 'ignore', 'ipc'],
+      stdio: ['ignore', 'ignore', 'ignore', 'ipc', 'pipe'],
       env: { NODE_ENV: 'production', PATH: process.env.PATH, SystemRoot: process.env.SystemRoot, TEMP: process.env.TEMP, TMP: process.env.TMP },
+    });
+    let diagnosticBuffer = '';
+    let memory: { phase: string; rss: number; peak: number; limit: number; exceeded: boolean } | undefined;
+    worker.stdio[4]?.on('data', (chunk: Buffer) => {
+      diagnosticBuffer += chunk.toString('utf8');
+      if (diagnosticBuffer.length > 4096) { diagnosticBuffer = ''; return; }
+      let end;
+      while ((end = diagnosticBuffer.indexOf('\n')) !== -1) {
+        const line = diagnosticBuffer.slice(0, end); diagnosticBuffer = diagnosticBuffer.slice(end + 1);
+        try {
+          const value = JSON.parse(line);
+          if (!Number.isInteger(value.stage) || !PARSER_PHASES[value.stage as number] || typeof value.exceeded !== 'boolean') continue;
+          if (![value.rss, value.peak, value.limit].every(n => Number.isSafeInteger(n) && n >= 0)) continue;
+          memory = { phase: PARSER_PHASES[value.stage as number]!, rss: value.rss, peak: value.peak, limit: value.limit, exceeded: value.exceeded };
+        } catch { /* Ignore malformed diagnostics; never forward raw child bytes. */ }
+      }
     });
     let finished = false;
     const finish = (error?: ResumeError, result?: ExtractedResume) => {
@@ -34,12 +50,13 @@ export function extractInWorker(bytes: Buffer, fileName: string, format: ResumeF
       else finish(new ResumeError(isResumeErrorCode(message.error) ? message.error : 'invalid_file'));
     });
     worker.once('error', () => finish(new ResumeError('document_too_complex')));
-    worker.once('exit', (code, signal) => {
+    // 'close' follows stdio drainage, so the watchdog's final sample is available.
+    worker.once('close', (code, signal) => {
       if (finished) return;
       const error = new ResumeError(code || signal ? 'document_too_complex' : 'invalid_file');
       // Keep diagnostic metadata for direct callers/tests without exposing parser
       // stderr, filenames or document text. The HTTP route returns only code/message.
-      error.cause = { stage: 'resume_parser_exit', exitCode: code, signal };
+      error.cause = { stage: 'resume_parser_exit', exitCode: code, signal, memory };
       finish(error);
     });
     if (signal.aborted) cancel();

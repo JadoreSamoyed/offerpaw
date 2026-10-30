@@ -282,6 +282,25 @@ test('compressed PDF expansion is stopped by the child memory watchdog without b
   assert.equal(normal.status, 200); assert.ok((await normal.json()).text.includes('Ada Engineer'));
 });
 
+test('the memory watchdog reports bounded phase and RSS metadata to direct callers', async () => {
+  await assert.rejects(
+    extractInWorker(pdfFixture('', 1, false, false, 128 * 1024 * 1024), 'PRIVATE-DIAGNOSTIC.pdf', 'pdf', new AbortController().signal),
+    (error: unknown) => {
+      assert.ok(error instanceof Error);
+      const cause = error.cause as { stage: string; memory?: { phase: string; rss: number; peak: number; limit: number; exceeded: boolean } };
+      assert.equal(cause.stage, 'resume_parser_exit');
+      assert.ok(cause.memory, 'the dedicated diagnostic pipe must survive child termination');
+      assert.equal(cause.memory.limit, 256 * 1024 * 1024);
+      assert.equal(cause.memory.exceeded, true);
+      assert.ok(cause.memory.rss > cause.memory.limit);
+      assert.ok(cause.memory.peak >= cause.memory.rss);
+      assert.ok(cause.memory.phase.startsWith('pdf_'));
+      assert.equal(JSON.stringify(cause).includes('PRIVATE-DIAGNOSTIC'), false);
+      return true;
+    },
+  );
+});
+
 test('DOCX external references are neither fetched nor rendered as HTML', async t => {
   let requests = 0;
   const external = createServer((_req, res) => { requests++; res.end('PRIVATE-EXTERNAL-DATA'); });

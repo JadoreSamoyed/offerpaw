@@ -1,7 +1,7 @@
 import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { MAX_DOCX_EXPANDED_BYTES, MAX_PDF_PAGES, MAX_RESUME_BYTES, MAX_RESUME_CHARACTERS, ResumeError, type ExtractedResume, type ResumeFormat } from './types.js';
+import { MAX_DOCX_EXPANDED_BYTES, MAX_PDF_PAGES, MAX_RESUME_BYTES, MAX_RESUME_CHARACTERS, ResumeError, type ExtractedResume, type ResumeFormat, type ParserPhase } from './types.js';
 
 const require = createRequire(import.meta.url);
 
@@ -75,28 +75,33 @@ async function checkDocxArchive(bytes: Buffer): Promise<void> {
   });
 }
 
-async function readPdf(bytes: Buffer): Promise<string> {
+async function readPdf(bytes: Buffer, phase: (value: ParserPhase) => void): Promise<string> {
   // The bundled CJS entry avoids re-transforming PDF.js's large ESM source in tsx development.
+  phase('pdf_dependency');
   const { PDFParse } = require('pdf-parse') as typeof import('pdf-parse');
   const pdfjsRoot = dirname(createRequire(require.resolve('pdf-parse')).resolve('pdfjs-dist/package.json'));
-  // PDF.js still dynamically imports its fake worker in Node. Loading its large
-  // unminified .mjs through tsx on a cold cache can exceed this child's RSS limit
-  // before document parsing begins. The upstream standalone minified worker has
-  // no local imports; a data URL lets Node load it without source transformation.
-  // Read only installed dependency code, never document-controlled code or URLs.
+  // Use the matching dependency's standalone minified worker via PDFParse's
+  // worker-source API. Read only installed code, never document-controlled code
+  // or URLs. Runtime loaders may still process data URLs; the watchdog measures
+  // their memory cost along with actual document parsing.
+  phase('pdf_worker_source');
   const workerSource = readFileSync(join(pdfjsRoot, 'legacy/build/pdf.worker.min.mjs'));
+  phase('pdf_worker_config');
   PDFParse.setWorker(`data:text/javascript;base64,${workerSource.toString('base64')}`);
+  phase('pdf_constructor');
   const parser = new PDFParse({ data: new Uint8Array(bytes), verbosity: 0, isEvalSupported: false,
     useWorkerFetch: false, useWasm: false, disableAutoFetch: true, disableStream: true,
     disableFontFace: true, maxImageSize: 0, enableXfa: false,
     cMapUrl: join(pdfjsRoot, 'cmaps').replaceAll('\\', '/') + '/',
     standardFontDataUrl: join(pdfjsRoot, 'standard_fonts').replaceAll('\\', '/') + '/' });
   try {
+    phase('pdf_get_info');
     const info = await parser.getInfo();
     if (info.total > MAX_PDF_PAGES) throw new ResumeError('too_many_pages');
     // Parse one page at a time and stop once enough text is available.
     let text = '';
     for (let page = 1; page <= info.total; page++) {
+      phase('pdf_get_text');
       const result = await parser.getText({ partial: [page], pageJoiner: '', parseHyperlinks: false });
       text += `${result.pages.map(value => value.text).join('\n')}\n`;
       if (normalizeText(text).length > MAX_RESUME_CHARACTERS) break;
@@ -105,24 +110,27 @@ async function readPdf(bytes: Buffer): Promise<string> {
   } catch (error) {
     if (error instanceof Error && error.name === 'PasswordException') throw new ResumeError('encrypted_file');
     throw error;
-  } finally { await parser.destroy(); }
+  } finally { phase('pdf_destroy'); await parser.destroy(); }
 }
 
 // Called only in the worker: no parser executes on the voice server's event loop.
-export async function extractResume(bytes: Buffer, fileName: string, format: ResumeFormat): Promise<ExtractedResume> {
+export async function extractResume(bytes: Buffer, fileName: string, format: ResumeFormat, phase: (value: ParserPhase) => void = () => {}): Promise<ExtractedResume> {
   if (bytes.length > MAX_RESUME_BYTES) throw new ResumeError('too_large');
   if (!bytes.length) throw new ResumeError('empty_file');
   let raw: string;
-  if (format === 'txt') raw = readText(bytes);
+  if (format === 'txt') { phase('txt_decode'); raw = readText(bytes); }
   else if (format === 'pdf') {
     if (bytes.subarray(0, 5).toString('ascii') !== '%PDF-') throw new ResumeError('invalid_file');
-    raw = await readPdf(bytes);
+    raw = await readPdf(bytes, phase);
   } else {
     if (bytes.subarray(0, 8).equals(Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]))) throw new ResumeError('encrypted_file');
     if (!bytes.subarray(0, 4).equals(Buffer.from([0x50, 0x4b, 0x03, 0x04]))) throw new ResumeError('invalid_file');
+    phase('docx_archive');
     await checkDocxArchive(bytes);
+    phase('docx_dependency');
     const mammoth = await import('mammoth');
     // Buffer-only raw text extraction leaves external file access disabled and never renders HTML/images.
+    phase('docx_text');
     raw = (await mammoth.extractRawText({ buffer: bytes })).value;
   }
   const normalized = normalizeText(raw);

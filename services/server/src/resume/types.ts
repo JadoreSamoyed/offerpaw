@@ -3,6 +3,8 @@ export const MAX_RESUME_CHARACTERS = 20000;
 export const MAX_PDF_PAGES = 30;
 export const MAX_DOCX_EXPANDED_BYTES = 20 * 1024 * 1024;
 export type ResumeFormat = 'pdf' | 'docx' | 'txt';
+export const PARSER_PHASES = ['starting', 'pdf_dependency', 'pdf_worker_source', 'pdf_worker_config', 'pdf_constructor', 'pdf_get_info', 'pdf_get_text', 'pdf_destroy', 'docx_archive', 'docx_dependency', 'docx_text', 'txt_decode'] as const;
+export type ParserPhase = typeof PARSER_PHASES[number];
 export interface ExtractedResume {
   fileName: string;
   text: string;
