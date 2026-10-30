@@ -1,0 +1,36 @@
+{
+  "name": "offerpaw",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OfferPaw / Offer汪 — self-hosted AI interview companion with a key-free scripted demo",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JadoreSamoyed/offerpaw.git"
+  },
+  "workspaces": [
+    "apps/mobile",
+    "services/server"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n api,app -c cyan,green \"npm run server\" \"npm run web -w apps/mobile\"",
+    "server": "node scripts/dev-server.mjs",
+    "asr:setup": "node scripts/setup-local-asr.mjs",
+    "asr": "node services/asr-local/run.mjs",
+    "dev:voice": "npm run dev",
+    "mobile": "npm run start -w apps/mobile",
+    "web": "npm run web -w apps/mobile",
+    "typecheck": "npm run typecheck --workspaces",
+    "test": "npm run test -w services/server && node --test scripts/dev-server.test.mjs apps/mobile/src/audio/audio.test.cjs apps/mobile/src/resume-upload.test.cjs apps/mobile/src/assistant.test.cjs apps/mobile/src/demo-storage.test.cjs scripts/demo.test.mjs scripts/prebuild-mobile.test.mjs",
+    "build": "npm run build --workspaces",
+    "demo": "node scripts/demo.mjs",
+    "demo:smoke": "node --import tsx scripts/demo-smoke.mjs"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=22.3.0"
+  }
+}

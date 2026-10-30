@@ -1,0 +1,12 @@
+{
+  "id": "campplus-zh-v1",
+  "name": "3dspeaker_speech_campplus_sv_zh-cn_16k-common.onnx",
+  "path": "speaker/campplus-zh.onnx",
+  "repository": "csukuangfj/speaker-embedding-models",
+  "revision": "0743f301363dec56491a490f6d6cbc9d67f9a3bf",
+  "bytes": 28281138,
+  "sha256": "f682b514c05d947ee3fa91cd6ec6c5c7543479a128373fa29b1faedccd21fd11",
+  "url": "https://huggingface.co/csukuangfj/speaker-embedding-models/resolve/0743f301363dec56491a490f6d6cbc9d67f9a3bf/3dspeaker_speech_campplus_sv_zh-cn_16k-common.onnx",
+  "releaseUrl": "https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-recongition-models/3dspeaker_speech_campplus_sv_zh-cn_16k-common.onnx",
+  "embeddingDimension": 192
+}

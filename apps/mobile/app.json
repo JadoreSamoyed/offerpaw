@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "Offer汪 · AI 面试助手",
+    "slug": "offerpaw",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.tingda.interview",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Offer汪需要麦克风来记录面试、实时识别问题，并提供回答参考。"
+      }
+    },
+    "android": {
+      "package": "com.tingda.interview",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ],
+      "predictiveBackGestureEnabled": true
+    },
+    "web": {
+      "bundler": "metro",
+      "name": "Offer汪 · AI 面试助手"
+    },
+    "plugins": [
+      "expo-dev-client",
+      "expo-secure-store",
+      "expo-sharing"
+    ]
+  }
+}

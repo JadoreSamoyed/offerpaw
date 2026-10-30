@@ -1,0 +1,106 @@
+name: CI and preview release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
+jobs:
+  checks:
+    name: Install, test and build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CI: 'true'
+      EXPO_NO_TELEMETRY: '1'
+    steps:
+      - name: Check out the event commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24.14.0'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Report dependency advisories (known Expo tooling findings)
+        continue-on-error: true
+        run: npm audit --omit=dev
+      - name: Check types
+        run: npm run typecheck
+      - name: Run tests
+        run: npm test
+      - name: Check the scripted demo over localhost
+        run: npm run demo:smoke
+      - name: Build the server and web client
+        run: npm run build
+
+  release:
+    name: Publish source preview
+    needs: checks
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && github.repository == 'JadoreSamoyed/offerpaw'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Check out the checked commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Package tracked source and publish the preview
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]]; then
+            echo 'Expected a version tag such as v0.1.0-alpha.1.' >&2
+            exit 1
+          fi
+
+          commit="$(git rev-parse HEAD)"
+          remote_commit="$(gh api "repos/$GITHUB_REPOSITORY/commits/$RELEASE_TAG" --jq .sha)"
+          if [[ "$remote_commit" != "$commit" ]]; then
+            echo 'The remote tag no longer identifies the checked commit.' >&2
+            exit 1
+          fi
+
+          asset_dir="$(mktemp -d "$RUNNER_TEMP/offerpaw-release.XXXXXX")"
+          archive="offerpaw-${RELEASE_TAG#v}-source.zip"
+          git archive --format=zip --prefix="offerpaw-${RELEASE_TAG#v}/" --output="$asset_dir/$archive" HEAD
+          (cd "$asset_dir" && sha256sum "$archive" > SHA256SUMS.txt)
+
+          if [[ -f "docs/releases/$RELEASE_TAG.md" ]]; then
+            cp "docs/releases/$RELEASE_TAG.md" "$asset_dir/release-notes.md"
+          else
+            cat > "$asset_dir/release-notes.md" <<'NOTES'
+          Offer汪 / OfferPaw — source-only development preview.
+
+          Start with the key-free scripted demo in the README. Live speech and model providers require separate configuration. No model weights, personal data, APK/IPA installers or hosted service are included in this release.
+
+          Automated checks cover installation, types, tests, the scripted localhost WebSocket demo and server/web builds. They do not establish native-device, live ASR/LLM or production readiness. See `docs/validation.md` for the validation scope.
+
+          Download the source ZIP and `SHA256SUMS.txt` below. 中文使用说明见仓库 `README.zh-CN.md`。
+          NOTES
+          fi
+          printf '\nChecked commit: `%s`\n' "$commit" >> "$asset_dir/release-notes.md"
+          gh release create "$RELEASE_TAG" "$asset_dir/$archive" "$asset_dir/SHA256SUMS.txt" \
+            --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "OfferPaw $RELEASE_TAG · Development preview" \
+            --notes-file "$asset_dir/release-notes.md" --generate-notes \
+            --prerelease --latest=false

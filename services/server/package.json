@@ -1,0 +1,28 @@
+{
+  "name": "@interview/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "tsx --test test/*.test.ts"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "mammoth": "1.13.0",
+    "pdf-parse": "2.4.5",
+    "ws": "^8.18.3",
+    "yauzl": "3.4.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.12",
+    "@types/ws": "^8.18.1",
+    "@types/yauzl": "3.4.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}
