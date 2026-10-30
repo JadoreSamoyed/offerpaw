@@ -76,14 +76,12 @@ async function checkDocxArchive(bytes: Buffer): Promise<void> {
 }
 
 async function readPdf(bytes: Buffer, phase: (value: ParserPhase) => void): Promise<string> {
-  // The bundled CJS entry avoids re-transforming PDF.js's large ESM source in tsx development.
+  // Use the package's bundled CJS entry in both source and compiled workers.
   phase('pdf_dependency');
   const { PDFParse } = require('pdf-parse') as typeof import('pdf-parse');
   const pdfjsRoot = dirname(createRequire(require.resolve('pdf-parse')).resolve('pdfjs-dist/package.json'));
-  // Use the matching dependency's minified worker with a short file URL. A data
-  // URL embeds the entire module in tsx's source-map metadata and can exceed the
-  // child RSS limit while getInfo initializes PDF.js. The installed dependency
-  // path is fixed here; documents cannot choose worker code or URLs.
+  // Use the matching installed dependency's minified worker. Documents cannot
+  // choose worker code or URLs; source and compiled workers load it natively.
   phase('pdf_worker_source');
   const workerSource = pathToFileURL(join(pdfjsRoot, 'legacy/build/pdf.worker.min.mjs')).href;
   phase('pdf_worker_config');

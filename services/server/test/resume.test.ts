@@ -2,6 +2,7 @@ import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer, request } from 'node:http';
 import { once } from 'node:events';
+import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative, isAbsolute } from 'node:path';
@@ -123,6 +124,25 @@ test('the first PDF in a fresh parser cache stays within the child memory limits
   process.env.TMP = cache;
   const result = await extractInWorker(pdfFixture('Cold cache engineer'), 'cold.pdf', 'pdf', new AbortController().signal);
   assert.ok(result.text.includes('Cold cache engineer'));
+});
+
+test('source bootstrap removes its loader before parser dependencies import', () => {
+  const bootstrap = new URL('../src/resume/worker-source.mjs', import.meta.url).href;
+  // tsx rewrites dynamic imports even in JavaScript/data URLs. A plain Node child
+  // checks native source preservation after the actual bootstrap has completed.
+  const probe = "export function probe() { return import('node:path'); }";
+  const script = `
+    import assert from 'node:assert/strict';
+    await import(${JSON.stringify(bootstrap)});
+    const { probe } = await import(${JSON.stringify(`data:text/javascript,${encodeURIComponent(probe)}`)});
+    assert.equal(probe.toString(), ${JSON.stringify(probe.replace('export ', ''))});
+    assert.equal(typeof (await probe()).join, 'function');
+  `;
+  const child = spawnSync(process.execPath, ['--input-type=module', '--eval', script], {
+    encoding: 'utf8', timeout: 10000, windowsHide: true,
+    env: { NODE_ENV: 'test', PATH: process.env.PATH, SystemRoot: process.env.SystemRoot, TEMP: process.env.TEMP, TMP: process.env.TMP },
+  });
+  assert.equal(child.status, 0, child.stderr || child.error?.message);
 });
 
 test('text truncation is explicit and preserves complete Unicode characters', async t => {
