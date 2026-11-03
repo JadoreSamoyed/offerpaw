@@ -6,7 +6,7 @@
 
 Offer汪把面试问题、转写和流式参考回答放在同一个工作台。准备大模型、AI Agent、算法或 AI 应用岗位时，可以先从下面这道 Agent 题开始练。
 
-**现在就练** · [AI Agent 面试题「退款接口超时，能直接重试吗？」](docs/ai-agent-interview-example.md) 无需安装，先自己回答，再展开参考思路。
+**现在就练** · [AI Agent 面试题「如何评测一个 Agent？」](docs/agent-evaluation-interview.md) 无需安装，先自己回答，再展开参考思路。
 
 ![Offer汪真实网页截图，展示系统延迟优化题与预设参考回答](docs/media/scripted-demo.png)
 
