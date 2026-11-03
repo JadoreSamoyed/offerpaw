@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none" role="img" aria-labelledby="offerpaw-title offerpaw-desc">
+  <title id="offerpaw-title">OfferPaw · Offer汪</title>
+  <desc id="offerpaw-desc">A friendly dog with orange ears and a speech-bubble tail, drawn with a bold navy outline.</desc>
+  <!-- A warm-white outer keyline keeps the mark clear on dark backgrounds. -->
+  <g stroke="#FFF9EF" stroke-width="34" stroke-linejoin="round">
+    <path d="M174 160C125 130 97 157 82 207L61 281Q51 312 83 316Q102 319 118 302L166 257Z" fill="#F55A3C"/>
+    <path d="M338 160C387 130 415 157 430 207L451 281Q461 312 429 316Q410 319 394 302L346 257Z" fill="#F55A3C"/>
+    <path d="M163 165Q256 118 349 165C377 205 395 246 395 294C395 365 345 408 285 408H224L151 452 165 398C130 380 110 345 110 298C110 248 135 204 163 165Z" fill="#FFF9EF"/>
+  </g>
+  <!-- Floppy ears make the dog recognizable even at small sizes. -->
+  <g fill="#F55A3C" stroke="#172B43" stroke-width="20" stroke-linejoin="round">
+    <path d="M174 160C125 130 97 157 82 207L61 281Q51 312 83 316Q102 319 118 302L166 257Z"/>
+    <path d="M338 160C387 130 415 157 430 207L451 281Q461 312 429 316Q410 319 394 302L346 257Z"/>
+  </g>
+  <!-- The dog face and conversation tail form one continuous shape. -->
+  <path d="M163 165Q256 118 349 165C377 205 395 246 395 294C395 365 345 408 285 408H224L151 452 165 398C130 380 110 345 110 298C110 248 135 204 163 165Z" fill="#FFF9EF" stroke="#172B43" stroke-width="20" stroke-linejoin="round"/>
+  <circle cx="203" cy="264" r="13" fill="#172B43"/>
+  <circle cx="309" cy="264" r="13" fill="#172B43"/>
+  <path d="M239 335H273V351Q273 369 256 369Q239 369 239 351Z" fill="#F55A3C"/>
+  <path d="M237 297Q256 286 275 297Q282 302 275 310L263 323Q256 330 249 323L237 310Q230 302 237 297Z" fill="#172B43"/>
+  <path d="M256 327V336M256 336Q241 350 227 337M256 336Q271 350 285 337" stroke="#172B43" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

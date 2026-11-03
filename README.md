@@ -1,8 +1,12 @@
+<img src="docs/media/offerpaw-logo.svg" alt="OfferPaw logo" width="120" />
+
 # OfferPaw · AI Interview Companion
 
 [中文说明](README.zh-CN.md) · [Run the demo](#try-the-scripted-demo) · [MIT License](LICENSE)
 
 OfferPaw (Offer汪) puts a technical interview question, its transcript, and a streamed reference answer in one workspace. Use it to rehearse technical interviews or in sessions where participants agree to recording and assistance. The interface is primarily Chinese and answer generation supports Chinese and English.
+
+**Practice now** · [AI Agent interview question: Can you retry a refund request after a timeout?](docs/ai-agent-interview-example.md) Answer first, then reveal the discussion. No setup required.
 
 ![OfferPaw web demo showing a Chinese question about reducing system latency and its preset reference answer](docs/media/scripted-demo.png)
 

@@ -1,8 +1,12 @@
+<img src="docs/media/offerpaw-logo.svg" alt="Offer汪标志" width="120" />
+
 # Offer汪（OfferPaw）· AI 面试助手
 
 [English](README.md) · [运行演示](#先体验演示) · [MIT 许可证](LICENSE)
 
-准备中文技术面试时，用 Offer汪把问题、转写和流式参考回答放在同一个工作台。比如先练一遍「如果要优化一个系统的响应延迟，你会怎么做？」，再对照示例，看自己有没有讲清定位瓶颈和验证结果的方法。
+Offer汪把面试问题、转写和流式参考回答放在同一个工作台。准备大模型、AI Agent、算法或 AI 应用岗位时，可以先从下面这道 Agent 题开始练。
+
+**现在就练** · [AI Agent 面试题「退款接口超时，能直接重试吗？」](docs/ai-agent-interview-example.md) 无需安装，先自己回答，再展开参考思路。
 
 ![Offer汪真实网页截图，展示系统延迟优化题与预设参考回答](docs/media/scripted-demo.png)
 
