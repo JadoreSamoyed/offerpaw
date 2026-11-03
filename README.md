@@ -1,10 +1,14 @@
 # OfferPaw · AI Interview Companion
 
-[中文说明](README.zh-CN.md) · [v0.1.0-alpha.1 preview notes](docs/releases/v0.1.0-alpha.1.md) · [MIT License](LICENSE)
+[中文说明](README.zh-CN.md) · [Run the demo](#try-the-scripted-demo) · [MIT License](LICENSE)
 
-OfferPaw (Offer汪) is a self-hosted speech Q&A companion with a mobile interface, streamed answers and local recording. Use it for interview practice and sessions where participants have agreed to recording and assistance.
+OfferPaw (Offer汪) puts a technical interview question, its transcript, and a streamed reference answer in one workspace. Use it to rehearse technical interviews or in sessions where participants agree to recording and assistance. The interface is primarily Chinese and answer generation supports Chinese and English.
 
-The interface is primarily Chinese. Answer generation supports Chinese and English. **v0.1.0-alpha.1 is a source-only development preview:** the scripted demo is available without API keys; live speech requires additional setup. There is no hosted service, APK or IPA in this release.
+![OfferPaw web demo showing a Chinese question about reducing system latency and its preset reference answer](docs/media/scripted-demo.png)
+
+*Actual web demo. The question, transcript and answer are preset. The demo needs no microphone or API key.*
+
+[v0.1.0-alpha.1](https://github.com/JadoreSamoyed/offerpaw/releases/tag/v0.1.0-alpha.1) is a source preview for self-hosting. Live speech needs separate configuration. The release ships source code and setup instructions.
 
 ## Try the scripted demo
 
@@ -17,7 +21,7 @@ npm ci
 npm run demo
 ```
 
-Open **http://localhost:8081**, choose **模拟演示** (scripted demo), then **演示下一个问题** to try another question. The backend uses localhost port 8787.
+Open **http://localhost:8081** and select **模拟演示** (scripted demo). The example question and reference answer appear automatically. The backend uses localhost port 8787.
 
 The demo disables live provider credentials for its process and uses preset questions and answers. It does not use the microphone, download speech models or call an LLM. Demo timing is not a live AI performance measurement. Stop the two development services with Ctrl+C.
 
